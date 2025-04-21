@@ -1,33 +1,36 @@
 const express = require('express');
 const cors = require('cors');
+const dotenv = require('dotenv');
 const mongoose = require('mongoose');
-require('dotenv').config();
-
 const authRoutes = require('./routes/authRoutes');
 const chatRoutes = require('./routes/chatRoutes');
-const errorHandler = require('./middleware/errorHandler');
-const connectDB = require('./config/db');
 
+dotenv.config();
 const app = express();
 
-// Middleware
 app.use(cors({ origin: ['http://localhost:3000', 'http://127.0.0.1:3000'] }));
 app.use(express.json());
 
-// Connect to MongoDB
-connectDB();
+// Подключение к MongoDB
+mongoose
+  .connect(process.env.MONGODB_URL)
+  .then(() => console.log('MongoDB connected successfully'))
+  .catch((err) => console.error('MongoDB connection error:', err));
 
-// Routes
+// Маршруты
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'Server is running' });
+  res.status(200).json({ status: 'OK', message: 'Server is running' });
 });
 
-// Error handling middleware
-app.use(errorHandler);
+// Обработка ошибок
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Something went wrong!' });
+});
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {

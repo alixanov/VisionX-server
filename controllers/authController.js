@@ -5,7 +5,7 @@ exports.register = async (req, res, next) => {
   const { firstName, lastName, email, username, password } = req.body;
 
   try {
-    // Валидация
+    // Валидация входных данных
     if (!firstName || !lastName || !email || !username || !password) {
       return res.status(400).json({ error: 'Все поля обязательны' });
     }
@@ -14,6 +14,9 @@ exports.register = async (req, res, next) => {
     }
     if (password.length < 6) {
       return res.status(400).json({ error: 'Пароль должен содержать минимум 6 символов' });
+    }
+    if (username.length < 3) {
+      return res.status(400).json({ error: 'Имя пользователя должно содержать минимум 3 символа' });
     }
 
     // Проверка существующих пользователей
@@ -39,7 +42,7 @@ exports.register = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Ошибка регистрации:', error);
-    next(error);
+    res.status(500).json({ error: 'Ошибка сервера при регистрации' });
   }
 };
 
@@ -47,7 +50,7 @@ exports.login = async (req, res, next) => {
   const { email, username, password } = req.body;
 
   try {
-    // Валидация
+    // Валидация входных данных
     if (!password || (!email && !username)) {
       return res.status(400).json({ error: 'Email или имя пользователя и пароль обязательны' });
     }
@@ -80,7 +83,7 @@ exports.login = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Ошибка входа:', error);
-    next(error);
+    res.status(500).json({ error: 'Ошибка сервера при входе' });
   }
 };
 
@@ -91,6 +94,7 @@ exports.getCurrentUser = async (req, res, next) => {
       return res.status(401).json({ error: 'Токен отсутствует' });
     }
 
+    // Верификация токена
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.userId).select('-password');
     if (!user) {
@@ -108,9 +112,12 @@ exports.getCurrentUser = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Ошибка получения данных пользователя:', error);
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Токен истек. Пожалуйста, войдите снова.' });
+    }
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({ error: 'Неверный токен' });
     }
-    next(error);
+    res.status(500).json({ error: 'Ошибка сервера при получении данных пользователя' });
   }
 };
